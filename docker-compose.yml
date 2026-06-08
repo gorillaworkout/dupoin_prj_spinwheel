@@ -1,0 +1,19 @@
+version: '3.9'
+
+services:
+  spinwheel:
+    build: .
+    container_name: spinwheel-app
+    restart: unless-stopped
+    ports:
+      - "3010:3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    volumes:
+      - spinwheel_backgrounds:/app/public/uploads/backgrounds
+
+volumes:
+  spinwheel_backgrounds:

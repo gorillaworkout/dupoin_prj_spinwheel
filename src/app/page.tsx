@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import Wheel from "@/components/Wheel";
-import Settings from "@/components/Settings";
 import { useWheel } from "@/context/WheelContext";
+import { Settings as SettingsIcon } from "lucide-react";
 
 export default function Home() {
   const { background } = useWheel();
@@ -13,8 +13,8 @@ export default function Home() {
     setMounted(true);
   }, []);
 
-  const backgroundStyle = background.type === 'color' 
-    ? { backgroundColor: background.value } 
+  const backgroundStyle = background.type === 'color'
+    ? { backgroundColor: background.value }
     : { backgroundImage: `url(${background.value})`, backgroundSize: 'cover', backgroundPosition: 'center' };
 
   if (!mounted) {
@@ -22,11 +22,10 @@ export default function Home() {
   }
 
   return (
-    <main 
+    <main
       className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center transition-all duration-700 ease-in-out"
       style={backgroundStyle}
     >
-      {/* Background Overlay for better readability if image is too bright */}
       {background.type === 'image' && (
         <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-0"></div>
       )}
@@ -41,11 +40,18 @@ export default function Home() {
         </p>
       </div>
 
+      {/* Admin Link */}
+      <a
+        href="/admin"
+        className="absolute top-6 right-6 z-40 p-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white hover:bg-white/20 transition shadow-lg"
+        title="Admin Panel"
+      >
+        <SettingsIcon className="w-6 h-6" />
+      </a>
+
       <div className="z-10 w-full max-w-4xl px-4 flex flex-col items-center">
         <Wheel />
       </div>
-
-      <Settings />
     </main>
   );
 }

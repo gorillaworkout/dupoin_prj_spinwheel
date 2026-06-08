@@ -1,36 +1,165 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Spinwheel Project
 
-## Getting Started
+Spinwheel app berbasis Next.js untuk mengelola hadiah, background, dan admin panel.
 
-First, run the development server:
+## Current Behavior
+
+- Background image **disimpan di VPS filesystem**
+- Upload image masuk ke:
+  - `public/uploads/backgrounds/`
+- Background aktif disimpan di:
+  - `public/uploads/backgrounds/current.json`
+- Jadi untuk testing sekarang: **ya, image ditaruh di VPS**
+
+## Tech Stack
+
+- Next.js 16
+- React 19
+- PostgreSQL
+- JWT auth via cookie
+- Local file storage untuk background image
+
+## Environment Setup
+
+Copy env example:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Lalu isi value penting:
+- `JWT_SECRET`
+- `DB_HOST`
+- `DB_PORT`
+- `DB_USER`
+- `DB_PASSWORD`
+- `DB_NAME`
+- `DB_MAX`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Local Development
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+cp .env.example .env
+npm run dev
+```
 
-## Learn More
+Buka:
+- App: `http://localhost:3000`
+- Admin: `http://localhost:3000/admin`
 
-To learn more about Next.js, take a look at the following resources:
+## Production Build
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run build
+npm start
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Docker Deployment
 
-## Deploy on Vercel
+Project ini sudah disiapkan untuk dijalankan via Docker.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Build image
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+docker build -t spinwheel-app .
+```
+
+### Run container
+
+```bash
+docker run -d \
+  --name spinwheel-app \
+  -p 3010:3000 \
+  -v spinwheel_backgrounds:/app/public/uploads/backgrounds \
+  --restart unless-stopped \
+  spinwheel-app
+```
+
+### Or use Docker Compose
+
+```bash
+docker compose up -d --build
+```
+
+## Important: Persistent Storage
+
+Karena background image disimpan ke filesystem container, maka **WAJIB** pakai volume persisten:
+
+- mount ke path: `/app/public/uploads/backgrounds`
+
+Kalau volume tidak dipasang:
+- upload background bisa hilang saat container di-recreate
+- image bisa reset
+
+## VPS Lain: Yang Harus Disiapkan
+
+Kalau next user mau deploy project ini ke VPS lain, siapkan:
+
+### 1. Server basics
+- Docker
+- Docker Compose plugin
+- Reverse proxy (opsional tapi disarankan)
+- Domain/subdomain
+- SSL (Let's Encrypt / Nginx Proxy Manager / Caddy)
+
+### 2. Source code
+Clone project ke server:
+
+```bash
+git clone <repo-url>
+cd dupoin_prj_spinwheel
+```
+
+### 3. PostgreSQL access
+App pakai PostgreSQL via environment variables.
+
+Isi `.env`:
+- `DB_HOST`
+- `DB_PORT`
+- `DB_USER`
+- `DB_PASSWORD`
+- `DB_NAME`
+- `DB_MAX`
+
+Dan auth admin pakai tabel:
+- `spinwheel_users`
+
+### 4. Persistent volume
+Wajib mount:
+- `/app/public/uploads/backgrounds`
+
+### 5. Port mapping
+Default container:
+- internal port `3000`
+
+Contoh external:
+- `3010:3000`
+
+### 6. Reverse proxy example
+Misal pakai Nginx:
+- domain `spinwheel.example.com`
+- proxy ke `http://127.0.0.1:3010`
+
+## Recommended Next Improvements
+
+Untuk deployment lintas VPS yang lebih rapi, disarankan next step:
+
+1. pindahkan background upload ke object storage:
+   - Supabase Storage
+   - Cloudflare R2
+   - S3
+
+Dengan begitu app jadi lebih portable dan tidak tergantung filesystem lokal VPS.
+
+## Current Limitation
+
+Saat ini background image memang bisa ditaruh di VPS dan itu valid untuk testing/production sederhana.
+
+Tapi kalau nanti:
+- multi-server
+- auto-scaling
+- migrate VPS
+- container sering recreate
+
+maka storage object (S3/R2/Supabase Storage) akan lebih aman dibanding local filesystem.
