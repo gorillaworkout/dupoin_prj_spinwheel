@@ -1,19 +1,48 @@
 version: '3.9'
 
 services:
-  spinwheel:
-    build: .
+  db:
+    image: postgres:16-alpine
+    container_name: spinwheel-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: spinwheel
+      POSTGRES_PASSWORD: spinwheel2026secure
+      POSTGRES_DB: spinwheel
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spinwheel -d spinwheel"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: spinwheel-app
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
     ports:
       - "3010:3000"
-    env_file:
-      - .env
     environment:
       NODE_ENV: production
       PORT: 3000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: spinwheel
+      DB_PASSWORD: spinwheel2026secure
+      DB_NAME: spinwheel
+      JWT_SECRET: sw-jwt-secret-change-me-in-production
     volumes:
       - spinwheel_backgrounds:/app/public/uploads/backgrounds
 
 volumes:
+  pgdata:
   spinwheel_backgrounds:
