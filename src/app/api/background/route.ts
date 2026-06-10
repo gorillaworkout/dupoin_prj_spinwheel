@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
+import { getPool } from "@/lib/db";
 import { verifySessionToken } from "@/lib/auth";
 
-const BACKGROUND_JSON_PATH = path.join(process.cwd(), "public", "uploads", "backgrounds", "current.json");
 const BACKGROUND_UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "backgrounds");
 const DEFAULT_BACKGROUND = { type: "color", value: "#0f172a" };
 
@@ -13,12 +13,14 @@ async function ensureDir() {
 
 export async function GET() {
   try {
-    await ensureDir();
-    const raw = await fs.readFile(BACKGROUND_JSON_PATH, "utf8").catch(() => null);
-    if (!raw) return NextResponse.json({ background: DEFAULT_BACKGROUND });
-
-    const parsed = JSON.parse(raw);
-    return NextResponse.json({ background: parsed });
+    const pool = getPool();
+    const result = await pool.query(
+      "SELECT value FROM spinwheel_settings WHERE key = 'background'"
+    );
+    if (result.rows.length === 0) {
+      return NextResponse.json({ background: DEFAULT_BACKGROUND });
+    }
+    return NextResponse.json({ background: result.rows[0].value });
   } catch (error) {
     console.error("GET background error:", error);
     return NextResponse.json({ background: DEFAULT_BACKGROUND });
@@ -58,7 +60,14 @@ export async function POST(req: NextRequest) {
       value: `/uploads/backgrounds/${filename}`,
     };
 
-    await fs.writeFile(BACKGROUND_JSON_PATH, JSON.stringify(background, null, 2), "utf8");
+    // Save to DB
+    const pool = getPool();
+    await pool.query(
+      `INSERT INTO spinwheel_settings (key, value, updated_at)
+       VALUES ('background', $1, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+      [JSON.stringify(background)]
+    );
 
     return NextResponse.json({ success: true, background });
   } catch (error) {
@@ -75,7 +84,6 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await ensureDir();
     const body = await req.json();
     const background = body?.background;
 
@@ -83,7 +91,14 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Background tidak valid" }, { status: 400 });
     }
 
-    await fs.writeFile(BACKGROUND_JSON_PATH, JSON.stringify(background, null, 2), "utf8");
+    const pool = getPool();
+    await pool.query(
+      `INSERT INTO spinwheel_settings (key, value, updated_at)
+       VALUES ('background', $1, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+      [JSON.stringify(background)]
+    );
+
     return NextResponse.json({ success: true, background });
   } catch (error) {
     console.error("PUT background error:", error);
